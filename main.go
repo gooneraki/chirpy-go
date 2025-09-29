@@ -7,17 +7,19 @@ import (
 
 func main() {
 
+	const filepathRoot = "."
+	const port = "8080"
+
 	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(filepathRoot)))
 
-	mux.Handle("/", http.FileServer(http.Dir(".")))
-
-	server := http.Server{
-		Addr:    ":8080",
+	srv := &http.Server{
+		Addr:    ":" + port,
 		Handler: mux,
 	}
 
 	fmt.Println("Starting server on :8080")
-	err := server.ListenAndServe()
+	err := srv.ListenAndServe()
 
 	if err != nil {
 		fmt.Printf("couldn't list and serve: %v", err)
