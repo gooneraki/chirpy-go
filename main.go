@@ -8,16 +8,19 @@ import (
 func main() {
 
 	mux := http.NewServeMux()
+
+	mux.Handle("/", http.FileServer(http.Dir(".")))
+
 	server := http.Server{
 		Addr:    ":8080",
 		Handler: mux,
 	}
 
-	err := http.ListenAndServe(server.Addr, server.Handler)
+	fmt.Println("Starting server on :8080")
+	err := server.ListenAndServe()
 
 	if err != nil {
 		fmt.Printf("couldn't list and serve: %v", err)
 		return
 	}
-
 }
