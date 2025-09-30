@@ -1,37 +1,29 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 )
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	r.Header.Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
 func main() {
-
 	const filepathRoot = "."
 	const port = "8080"
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
-	// mux.Handle("/app/", http.FileServer(http.Dir(filepathRoot)))
-
-	mux.HandleFunc("/healthz", healthHandler)
+	mux.HandleFunc("/healthz", handlerReadiness)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
 
-	fmt.Println("Starting server on :8080")
-	err := srv.ListenAndServe()
+	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
+	log.Fatal(srv.ListenAndServe())
+}
 
-	if err != nil {
-		fmt.Printf("couldn't list and serve: %v", err)
-		return
-	}
+func handlerReadiness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(http.StatusText(http.StatusOK)))
 }
