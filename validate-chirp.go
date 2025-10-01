@@ -11,7 +11,7 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 		Body string `json:"body"`
 	}
 	type returnVals struct {
-		Cleaned_body string `json:"cleaned_body"`
+		CleanedBody string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -28,36 +28,26 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cleaned_body := replaceBadWords(params.Body)
+	badWords := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert":  {},
+		"fornax":    {},
+	}
+	cleaned := getCleanedBody(params.Body, badWords)
 
 	respondWithJSON(w, http.StatusOK, returnVals{
-		Cleaned_body: cleaned_body,
+		CleanedBody: cleaned,
 	})
 }
 
-func replaceBadWords(body string) string {
-	badWords := []string{"kerfuffle", "sharbert", "fornax"}
-
-	listBody := strings.Split(body, " ")
-	listResult := make([]string, 0)
-	for _, v := range listBody {
-		if containsString(v, badWords) {
-			listResult = append(listResult, "****")
-		} else {
-			listResult = append(listResult, v)
+func getCleanedBody(body string, badWords map[string]struct{}) string {
+	words := strings.Split(body, " ")
+	for i, word := range words {
+		loweredWord := strings.ToLower(word)
+		if _, ok := badWords[loweredWord]; ok {
+			words[i] = "****"
 		}
 	}
-
-	return strings.Join(listResult, " ")
-}
-
-func containsString(input string, condition []string) bool {
-
-	for i := range condition {
-		if strings.EqualFold(input, condition[i]) {
-			return true
-		}
-	}
-	return false
-
+	cleaned := strings.Join(words, " ")
+	return cleaned
 }
