@@ -15,9 +15,12 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
-func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
+	}
+	type response struct {
+		User
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -28,27 +31,18 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUser, err := cfg.db.CreateUser(r.Context(), params.Email)
+	user, err := cfg.db.CreateUser(r.Context(), params.Email)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't create new user", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
 		return
 	}
 
-	user := User{
-		ID:        newUser.ID,
-		CreatedAt: newUser.CreatedAt,
-		UpdatedAt: newUser.UpdatedAt,
-		Email:     newUser.Email,
-	}
-
-	mNewUser, err := json.Marshal(user)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't marshal new user", err)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(mNewUser)
-
+	respondWithJSON(w, http.StatusCreated, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+	})
 }
