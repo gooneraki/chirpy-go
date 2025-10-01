@@ -6,26 +6,25 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handlerChirpsRetrieveById(w http.ResponseWriter, r *http.Request) {
-
-	chirpIDstring := r.PathValue("chirpID")
-	chirpID, err := uuid.Parse(chirpIDstring)
+func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
+	chirpIDString := r.PathValue("chirpID")
+	chirpID, err := uuid.Parse(chirpIDString)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
 		return
 	}
 
-	dbChirps, err := cfg.db.GetChirp(r.Context(), chirpID)
+	dbChirp, err := cfg.db.GetChirp(r.Context(), chirpID)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Couldn't retrieve chirp with id", err)
+		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, Chirp{
-		ID:        dbChirps.ID,
-		CreatedAt: dbChirps.CreatedAt,
-		UpdatedAt: dbChirps.UpdatedAt,
-		UserID:    dbChirps.UserID,
-		Body:      dbChirps.Body,
+		ID:        dbChirp.ID,
+		CreatedAt: dbChirp.CreatedAt,
+		UpdatedAt: dbChirp.UpdatedAt,
+		UserID:    dbChirp.UserID,
+		Body:      dbChirp.Body,
 	})
 }
