@@ -7,19 +7,17 @@ import (
 )
 
 func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
-
-	bearerToken, err := auth.GetBearerToken(r.Header)
+	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "couldn't get bearer token", err)
+		respondWithError(w, http.StatusBadRequest, "Couldn't find token", err)
 		return
 	}
 
-	_, err = cfg.db.RevokeRefreshToken(r.Context(), bearerToken)
+	_, err = cfg.db.RevokeRefreshToken(r.Context(), refreshToken)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't revoke token", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't revoke session", err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusNoContent, struct{}{})
-
+	w.WriteHeader(http.StatusNoContent)
 }
