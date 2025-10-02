@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+
 	"net/http"
 	"time"
 
@@ -11,49 +11,62 @@ import (
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email            string `json:"email"`
 		Password         string `json:"password"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds,omitempty"`
+		Email            string `json:"email"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
+	}
+	type response struct {
+		User
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't decode parameters", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
 	}
 
 	user, err := cfg.db.GetUserByEmail(r.Context(), params.Email)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, fmt.Sprintf("user with email %v does not exist", params.Email), err)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		return
 	}
 
 	matched, err := auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't check hash password", err)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		return
 	}
 	if !matched {
-		respondWithError(w, http.StatusUnauthorized, "wrong password", err)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		return
 	}
 
-	var expiresIn time.Duration
-	if params.ExpiresInSeconds == nil {
-		expiresIn = time.Hour
-	} else {
-		expiresIn = time.Duration(*params.ExpiresInSeconds) * time.Second
+	expirationTime := time.Hour
+	if params.ExpiresInSeconds > 0 && params.ExpiresInSeconds < 3600 {
+		expirationTime = time.Duration(params.ExpiresInSeconds) * time.Second
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expiresIn)
+	accessToken, err := auth.MakeJWT(
+		user.ID,
+		cfg.jwtSecret,
+		expirationTime,
+	)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't create token", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create access JWT", err)
+		return
 	}
 
-	respondWithJSON(w, http.StatusOK, User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+		Token: accessToken,
 	})
-
 }
