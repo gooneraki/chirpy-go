@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -81,4 +83,20 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 	return id, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("authorization header is empty")
+
+	}
+
+	authWordsList := strings.Split(authHeader, " ")
+	if len(authWordsList) != 2 {
+		return "", fmt.Errorf("unexpected Authorization value format %v", authHeader)
+	}
+
+	return authWordsList[1], nil
+
 }
