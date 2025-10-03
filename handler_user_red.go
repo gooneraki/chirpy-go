@@ -11,22 +11,21 @@ import (
 )
 
 func (cfg *apiConfig) handlerWebhook(w http.ResponseWriter, r *http.Request) {
-	headersApi, err := auth.GetAPIKey(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "couldn't get api key from headers", err)
-		return
-	}
-
-	if headersApi != cfg.polkaKey {
-		respondWithError(w, http.StatusUnauthorized, "POLKA API keys don't match", err)
-		return
-	}
-
 	type parameters struct {
 		Event string `json:"event"`
 		Data  struct {
 			UserID uuid.UUID `json:"user_id"`
 		}
+	}
+
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find api key", err)
+		return
+	}
+	if apiKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "API key is invalid", err)
+		return
 	}
 
 	decoder := json.NewDecoder(r.Body)
