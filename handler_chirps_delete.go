@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gooneraki/chirpy-go/internal/auth"
-	"github.com/gooneraki/chirpy-go/internal/database"
 )
 
 func (cfg *apiConfig) handlerChirpsDelete(w http.ResponseWriter, r *http.Request) {
@@ -16,38 +15,30 @@ func (cfg *apiConfig) handlerChirpsDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tokenString, err := auth.GetBearerToken(r.Header)
+	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT", err)
 		return
 	}
-
-	userId, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
 	if err != nil {
-		respondWithError(w, http.StatusForbidden, "Couldn't validate JWT", err)
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
 		return
 	}
 
-	// First, check if the chirp exists and get its details
-	chirp, err := cfg.db.GetChirp(r.Context(), chirpID)
+	dbChirp, err := cfg.db.GetChirp(r.Context(), chirpID)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
 		return
 	}
-
-	// Check if the user is the author of the chirp
-	if chirp.UserID != userId {
-		respondWithError(w, http.StatusForbidden, "You can only delete your own chirps", nil)
+	if dbChirp.UserID != userID {
+		respondWithError(w, http.StatusForbidden, "You can't delete this chirp", err)
 		return
 	}
 
-	// Now delete the chirp
-	err = cfg.db.DeleteChirp(r.Context(), database.DeleteChirpParams{
-		ID:     chirpID,
-		UserID: userId,
-	})
+	err = cfg.db.DeleteChirp(r.Context(), chirpID)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Couldn't delete chirp", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't delete chirp", err)
 		return
 	}
 
