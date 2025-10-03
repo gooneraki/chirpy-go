@@ -4,32 +4,31 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/gooneraki/chirpy-go/internal/database"
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
-	authorId := r.URL.Query().Get("author_id")
-
-	var dbChirps []database.Chirp
-	var err error
-	if authorId == "" {
-		dbChirps, err = cfg.db.GetChirps(r.Context())
-	} else {
-		authorUUID, parseErr := uuid.Parse(authorId)
-		if parseErr != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid author ID", parseErr)
-			return
-		}
-		dbChirps, err = cfg.db.GetChirpsByAuthor(r.Context(), authorUUID)
-	}
-
+	dbChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
 		return
 	}
 
+	authorID := uuid.Nil
+	authorIDString := r.URL.Query().Get("author_id")
+	if authorIDString != "" {
+		authorID, err = uuid.Parse(authorIDString)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid author ID", err)
+			return
+		}
+	}
+
 	chirps := []Chirp{}
 	for _, dbChirp := range dbChirps {
+		if authorID != uuid.Nil && dbChirp.UserID != authorID {
+			continue
+		}
+
 		chirps = append(chirps, Chirp{
 			ID:        dbChirp.ID,
 			CreatedAt: dbChirp.CreatedAt,
