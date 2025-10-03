@@ -66,21 +66,19 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const updateUser = `-- name: UpdateUser :one
-UPDATE users 
-SET email = $1,
-hashed_password = $2
-WHERE id = $3
+UPDATE users SET email = $2, hashed_password = $3, updated_at = NOW()
+WHERE id = $1
 RETURNING id, created_at, updated_at, email, hashed_password
 `
 
 type UpdateUserParams struct {
+	ID             uuid.UUID
 	Email          string
 	HashedPassword string
-	ID             uuid.UUID
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUser, arg.Email, arg.HashedPassword, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateUser, arg.ID, arg.Email, arg.HashedPassword)
 	var i User
 	err := row.Scan(
 		&i.ID,
