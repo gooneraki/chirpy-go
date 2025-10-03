@@ -1,20 +1,20 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/gooneraki/chirpy-go/internal/database"
 )
 
-func (cfg *apiConfig) handlerUsersRed(w http.ResponseWriter, r *http.Request) {
-
+func (cfg *apiConfig) handlerWebhook(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Event string `json:"event"`
 		Data  struct {
 			UserID uuid.UUID `json:"user_id"`
-		} `json:"data"`
+		}
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -30,12 +30,13 @@ func (cfg *apiConfig) handlerUsersRed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = cfg.db.UpdateUserRed(r.Context(), database.UpdateUserRedParams{
-		ID:          params.Data.UserID,
-		IsChirpyRed: true,
-	})
+	_, err = cfg.db.UpgradeToChirpyRed(r.Context(), params.Data.UserID)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Couldn't update user red membership", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, "Couldn't find user", err)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "Couldn't update user", err)
 		return
 	}
 
