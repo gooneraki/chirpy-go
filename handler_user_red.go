@@ -7,9 +7,21 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/gooneraki/chirpy-go/internal/auth"
 )
 
 func (cfg *apiConfig) handlerWebhook(w http.ResponseWriter, r *http.Request) {
+	headersApi, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't get api key from headers", err)
+		return
+	}
+
+	if headersApi != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "POLKA API keys don't match", err)
+		return
+	}
+
 	type parameters struct {
 		Event string `json:"event"`
 		Data  struct {
@@ -19,7 +31,7 @@ func (cfg *apiConfig) handlerWebhook(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
