@@ -2,15 +2,22 @@ package main
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerChirpsRetrieve(w http.ResponseWriter, r *http.Request) {
+
 	dbChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
 		return
+	}
+
+	sortQuery := r.URL.Query().Get("sort")
+	if sortQuery == "desc" {
+		sort.Slice(dbChirps, func(i, j int) bool { return dbChirps[j].CreatedAt.Before(dbChirps[i].CreatedAt) })
 	}
 
 	authorID := uuid.Nil
